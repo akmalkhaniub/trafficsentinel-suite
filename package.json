@@ -1,0 +1,24 @@
+{
+  "name": "trafficsentinel-suite",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Enterprise AI Agent, Ad-Tech Telemetry MCP Server, and Ground-Truth Evaluation Suite",
+  "scripts": {
+    "test": "python -m pytest tests/",
+    "eval": "python apps/eval-studio/runner.py --version v1.0",
+    "eval:compare": "python apps/eval-studio/runner.py --compare",
+    "demo": "python apps/agent/main.py",
+    "seed": "python apps/mcp-server/data/seed_data.py"
+  },
+  "keywords": [
+    "ad-tech",
+    "ivt",
+    "mcp",
+    "fastmcp",
+    "claude-skills",
+    "evaluation-discipline",
+    "duckdb"
+  ],
+  "author": "Akmal Khan, PhD",
+  "license": "MIT"
+}

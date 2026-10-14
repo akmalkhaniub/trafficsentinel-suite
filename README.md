@@ -3,6 +3,8 @@
 > **Enterprise AI Agent, Ad-Tech Telemetry MCP Server, and Ground-Truth Evaluation Harness for Invalid Traffic (IVT) Investigation & Ad-Fraud Detection.**
 
 ![Python](https://img.shields.io/badge/Python-3.11%2B-blue?style=for-the-badge&logo=python&logoColor=white)
+![Angular](https://img.shields.io/badge/Angular-21.2-dd0031?style=for-the-badge&logo=angular&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.109%2B-009688?style=for-the-badge&logo=fastapi&logoColor=white)
 ![Model Context Protocol](https://img.shields.io/badge/MCP-FastMCP_v1.2-purple?style=for-the-badge&logo=anthropic&logoColor=white)
 ![DuckDB](https://img.shields.io/badge/DuckDB-1.1%2B-fff000?style=for-the-badge&logo=duckdb&logoColor=black)
 ![Claude Code](https://img.shields.io/badge/Claude_Code-Skills_as_Code-d97757?style=for-the-badge)
@@ -14,7 +16,7 @@
 
 **TrafficSentinel Suite** is a production-grade, monorepo platform designed to address the challenges of digital advertising trust & safety, programmatic fraud forensics, and agent behavior engineering.
 
-Built specifically to demonstrate production LLM agent architecture, interactive disambiguation, and rigorous evaluation discipline, the suite comprises **three interconnected applications**:
+Built specifically to demonstrate production LLM agent architecture, interactive disambiguation, and rigorous evaluation discipline, the suite comprises **four interconnected systems**:
 
 ```
                        TRAFFICSENTINEL MONOREPO TOPOLOGY
@@ -23,18 +25,17 @@ Built specifically to demonstrate production LLM agent architecture, interactive
 │    • Client-facing IVT investigator agent powered by Anthropic Claude 3.7   │
 │    • Versioned Claude Skills (IVT diagnostic workflows, CTV spoofing trees) │
 │    • Interactive Clarification Engine (asks clarifying questions first)     │
-│    • Strict epistemic confidence rules (zero false accusations)             │
-└─────────────────────────────────────┬───────────────────────────────────────┘
-                                      │ JSON-RPC (MCP)
-┌─────────────────────────────────────▼───────────────────────────────────────┐
-│ 2. apps/mcp-server (AdStream MCP)                                           │
-│    • High-speed Model Context Protocol server built with FastMCP            │
-│    • In-process DuckDB telemetry engine querying bidstreams & CTV apps      │
-│    • Action-Constraint-Boundary semantic tool descriptions                  │
-│    • Hard token budget ceiling (<800 tokens) preventing context bloat       │
-└─────────────────────────────────────┬───────────────────────────────────────┘
-                                      │
-┌─────────────────────────────────────▼───────────────────────────────────────┐
+│    • FastAPI REST Gateway exposing POST /api/investigate & /api/eval        │
+└───────────────────────┬─────────────────────────────┬───────────────────────┘
+                        │ JSON-RPC (MCP)              │ REST / WebSocket
+┌───────────────────────▼──────────────────────┐ ┌────▼───────────────────────┐
+│ 2. apps/mcp-server (AdStream MCP)            │ │ 4. apps/web (Angular 21 SPA)│
+│    • FastMCP server with DuckDB analytics    │ │    • Signal-based reactivity│
+│    • Queries 500k+ Parquet bidstream records │ │    • Clarification cards    │
+│    • Strict 800-token context budgeting      │ │    • Regression Diff matrix │
+└───────────────────────┬──────────────────────┘ └────────────────────────────┘
+                        │
+┌───────────────────────▼─────────────────────────────────────────────────────┐
 │ 3. apps/eval-studio (PromptEval Studio)                                     │
 │    • Automated evaluation and regression catching harness                   │
 │    • 50 Curated Ground-Truth Scenarios across 4 difficulty cohorts          │

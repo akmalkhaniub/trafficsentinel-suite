@@ -27,6 +27,7 @@ htmlcov/
 # Node
 node_modules/
 .turbo/
+.angular/
 
 # OS
 .DS_Store

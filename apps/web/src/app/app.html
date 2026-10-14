@@ -1,0 +1,405 @@
+<div class="dashboard-shell">
+  <!-- Top Navigation Bar -->
+  <header class="top-nav">
+    <div class="brand-group">
+      <div class="brand-icon">🛡️</div>
+      <div>
+        <h1 class="brand-title">TrafficSentinel AI</h1>
+        <p class="brand-subtitle">Enterprise IVT Forensics, FastMCP Telemetry &amp; PromptEval Studio</p>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <nav class="nav-tabs">
+      <button 
+        class="nav-tab-btn" 
+        [class.active]="activeTab() === 'investigator'"
+        (click)="setTab('investigator')">
+        <span class="tab-icon">💬</span> Forensic Investigator
+      </button>
+      <button 
+        class="nav-tab-btn" 
+        [class.active]="activeTab() === 'evals'"
+        (click)="setTab('evals')">
+        <span class="tab-icon">🧪</span> PromptEval Studio
+      </button>
+      <button 
+        class="nav-tab-btn" 
+        [class.active]="activeTab() === 'telemetry'"
+        (click)="setTab('telemetry')">
+        <span class="tab-icon">📊</span> AdStream Telemetry
+      </button>
+    </nav>
+
+    <!-- Version & API Status Indicator -->
+    <div class="status-group">
+      <div class="prompt-toggle">
+        <span class="toggle-label">Prompt:</span>
+        <button 
+          class="badge-toggle"
+          [class.active-gold]="promptVersion() === 'v1.0'"
+          (click)="setPromptVersion('v1.0')">
+          v1.0 (Golden)
+        </button>
+        <button 
+          class="badge-toggle"
+          [class.active-regressed]="promptVersion() === 'v1.1_regressed'"
+          (click)="setPromptVersion('v1.1_regressed')">
+          v1.1 (Candidate)
+        </button>
+      </div>
+
+      <div class="api-pill" [class.online]="apiOnline()" [class.offline]="!apiOnline()">
+        <span class="dot"></span> {{ apiOnline() ? 'API Ready' : 'Connecting...' }}
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Body -->
+  <main class="main-viewport">
+    
+    <!-- ============================================================== -->
+    <!-- TAB 1: FORENSIC INVESTIGATOR                                   -->
+    <!-- ============================================================== -->
+    @if (activeTab() === 'investigator') {
+      <section class="investigator-layout">
+        
+        <!-- Chat History Stream -->
+        <div class="chat-thread-container">
+          @for (msg of messages(); track msg.id) {
+            <div class="message-row" [class.user-row]="msg.role === 'user'" [class.agent-row]="msg.role === 'agent'">
+              <div class="message-avatar">
+                {{ msg.role === 'user' ? '👤' : '🛡️' }}
+              </div>
+              <div class="message-bubble" [class.clarification-bubble]="msg.isClarification">
+                <div class="bubble-header">
+                  <span class="sender-name">{{ msg.role === 'user' ? 'Client' : 'TrafficSentinel AI' }}</span>
+                  <span class="timestamp">{{ msg.timestamp }}</span>
+                </div>
+
+                <!-- Markdown Content -->
+                <div class="bubble-content" [innerHTML]="formatMarkdown(msg.content)"></div>
+
+                <!-- Interactive Clarification Card (If Agent Paused for Disambiguation) -->
+                @if (msg.isClarification && msg.clarificationPayload) {
+                  <div class="clarification-action-card">
+                    <div class="card-title">
+                      <span>⚡ Interactive Disambiguation Gate</span>
+                      <span class="completeness-pill">Completeness: {{ msg.clarificationPayload.completeness_score * 100 }}%</span>
+                    </div>
+                    <p class="clarification-prompt">{{ msg.clarificationPayload.primary_question }}</p>
+
+                    <div class="options-grid">
+                      @for (opt of msg.clarificationPayload.suggested_options; track opt.id) {
+                        <button 
+                          class="option-pill-btn"
+                          (click)="selectClarificationOption(opt, msg.clarificationPayload.missing_slots[0] || 'parameter')">
+                          <span class="opt-label">{{ opt.label }}</span>
+                          @if (opt.description) {
+                            <span class="opt-desc">{{ opt.description }}</span>
+                          }
+                        </button>
+                      }
+                    </div>
+                  </div>
+                }
+
+                <!-- Tool Execution Badges -->
+                @if (msg.toolsCalled && msg.toolsCalled.length > 0) {
+                  <div class="meta-footer">
+                    <span class="meta-tag tool-tag">
+                      <span class="tag-icon">🔌</span> MCP: {{ msg.toolsCalled.join(', ') }}
+                    </span>
+                    @if (msg.calibratedConfidence) {
+                      <span class="meta-tag confidence-tag" [class.high-risk]="msg.calibratedConfidence === 'CONFIRMED_HIGH_RISK'">
+                        🎯 {{ msg.calibratedConfidence }}
+                      </span>
+                    }
+                  </div>
+                }
+
+                <!-- Anti-Injection Defense Flags -->
+                @if (msg.antiInjectionFlags && msg.antiInjectionFlags.length > 0) {
+                  <div class="meta-footer">
+                    <span class="meta-tag injection-tag">
+                      🛡️ Blocked Adversarial Pattern: {{ msg.antiInjectionFlags[0] }}
+                    </span>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+
+          @if (isInvestigating()) {
+            <div class="message-row agent-row">
+              <div class="message-avatar">🛡️</div>
+              <div class="message-bubble typing-bubble">
+                <div class="typing-indicator">
+                  <span></span><span></span><span></span>
+                </div>
+                <span class="typing-text">Evaluating ambiguity &amp; executing DuckDB telemetry scan...</span>
+              </div>
+            </div>
+          }
+        </div>
+
+        <!-- Sticky Input Console -->
+        <div class="input-console-bar">
+          <!-- Preset Prompt Chips -->
+          <div class="preset-chips-scroll">
+            <span class="chips-label">Presets:</span>
+            @for (preset of samplePrompts; track preset.label) {
+              <button class="chip-btn" (click)="setQuery(preset.prompt)">
+                {{ preset.label }}
+              </button>
+            }
+          </div>
+
+          <div class="input-form">
+            <textarea 
+              rows="2"
+              class="query-textarea"
+              placeholder="Enter an investigation request (e.g. Audit Roku channel com.streammaster.roku for screensaver ad fraud...)"
+              [value]="queryInput()"
+              (input)="queryInput.set($any($event.target).value)"
+              (keydown.enter)="$event.preventDefault(); sendInvestigation()">
+            </textarea>
+            <button 
+              class="send-btn" 
+              [disabled]="isInvestigating() || !queryInput().trim()"
+              (click)="sendInvestigation()">
+              Investigate &rarr;
+            </button>
+          </div>
+        </div>
+
+      </section>
+    }
+
+    <!-- ============================================================== -->
+    <!-- TAB 2: PROMPTEVAL STUDIO                                       -->
+    <!-- ============================================================== -->
+    @if (activeTab() === 'evals') {
+      <section class="evals-view">
+        
+        <!-- Scorecard Header -->
+        <div class="eval-header-banner">
+          <div>
+            <h2 class="view-title">PromptEval Studio: Golden Benchmark Suite</h2>
+            <p class="view-subtitle">50 Curated Scenarios benchmarking Clarification Precision, Tool Accuracy, and Regressions</p>
+          </div>
+          <div class="eval-btn-group">
+            <button class="btn btn-secondary" [disabled]="isRunningEval()" (click)="loadRegressionDiff()">
+              🔍 Compare Regression (v1.0 vs v1.1)
+            </button>
+            <button class="btn btn-primary" [disabled]="isRunningEval()" (click)="runEvaluation()">
+              ▶ Run Full Benchmark (50 Scenarios)
+            </button>
+          </div>
+        </div>
+
+        <!-- Metric KPI Cards -->
+        @if (evalSummary()) {
+          <div class="kpi-grid">
+            <div class="kpi-card" [class.success]="evalSummary().clarification_trigger_rate >= 95">
+              <span class="kpi-label">Clarification Precision (CTR)</span>
+              <span class="kpi-value">{{ evalSummary().clarification_trigger_rate }}%</span>
+              <span class="kpi-sub">Target: &ge; 98.0%</span>
+            </div>
+
+            <div class="kpi-card" [class.success]="evalSummary().tool_selection_accuracy >= 95">
+              <span class="kpi-label">Tool Selection Accuracy (TSA)</span>
+              <span class="kpi-value">{{ evalSummary().tool_selection_accuracy }}%</span>
+              <span class="kpi-sub">Target: &ge; 95.0%</span>
+            </div>
+
+            <div class="kpi-card" [class.success]="evalSummary().calibrated_confidence_rate === 100">
+              <span class="kpi-label">Non-Overstatement Score</span>
+              <span class="kpi-value">{{ evalSummary().calibrated_confidence_rate }}%</span>
+              <span class="kpi-sub">Target: 100% Zero-Tolerance</span>
+            </div>
+
+            <div class="kpi-card" [class.success]="evalSummary().injection_defense_rate === 100">
+              <span class="kpi-label">Anti-Injection Defense</span>
+              <span class="kpi-value">{{ evalSummary().injection_defense_rate }}%</span>
+              <span class="kpi-sub">Target: 100% Zero-Tolerance</span>
+            </div>
+          </div>
+        }
+
+        <!-- Regression Diff Card (If Triggered) -->
+        @if (regressionDiff()) {
+          <div class="regression-audit-card">
+            <div class="card-header">
+              <span class="incident-badge">REGRESSION AUDIT: {{ regressionDiff().incident_id }}</span>
+              <span class="gate-status-pill blocked">CI ACTION: {{ regressionDiff().ci_gate_action }}</span>
+            </div>
+            <p class="root-cause-text"><strong>Root Cause Analysis:</strong> {{ regressionDiff().root_cause }}</p>
+
+            <table class="diff-table">
+              <thead>
+                <tr>
+                  <th>Metric Name</th>
+                  <th>Golden Version (v1.0)</th>
+                  <th>Candidate Version (v1.1)</th>
+                  <th>Delta Differential</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Clarification Trigger Rate</td>
+                  <td class="pass-val">{{ regressionDiff().golden_v1_0.clarification_trigger_rate }}%</td>
+                  <td class="fail-val">{{ regressionDiff().candidate_v1_1_regressed.clarification_trigger_rate }}%</td>
+                  <td class="delta-fail">{{ regressionDiff().delta.clarification_trigger_rate }}% (COLLAPSE)</td>
+                </tr>
+                <tr>
+                  <td>Overall Pass Rate</td>
+                  <td class="pass-val">{{ regressionDiff().golden_v1_0.pass_rate }}%</td>
+                  <td class="fail-val">{{ regressionDiff().candidate_v1_1_regressed.pass_rate }}%</td>
+                  <td class="delta-fail">{{ regressionDiff().delta.pass_rate }}%</td>
+                </tr>
+                <tr>
+                  <td>CI Quality Gate Decision</td>
+                  <td><span class="status-pill pass">APPROVED</span></td>
+                  <td><span class="status-pill fail">BLOCKED</span></td>
+                  <td>PR MERGE REJECTED</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        }
+
+        <!-- Cohort Filter Pills -->
+        <div class="cohort-filters">
+          <span class="filter-label">Filter Cohort:</span>
+          <button class="cohort-pill" [class.active]="activeCohortFilter() === 'all'" (click)="activeCohortFilter.set('all')">All (50)</button>
+          <button class="cohort-pill" [class.active]="activeCohortFilter() === 'ambiguous'" (click)="activeCohortFilter.set('ambiguous')">Ambiguous (15)</button>
+          <button class="cohort-pill" [class.active]="activeCohortFilter() === 'direct'" (click)="activeCohortFilter.set('direct')">Direct (15)</button>
+          <button class="cohort-pill" [class.active]="activeCohortFilter() === 'borderline'" (click)="activeCohortFilter.set('borderline')">Borderline (10)</button>
+          <button class="cohort-pill" [class.active]="activeCohortFilter() === 'adversarial'" (click)="activeCohortFilter.set('adversarial')">Adversarial (10)</button>
+        </div>
+
+        <!-- Scenarios Table -->
+        <div class="table-card">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Cohort</th>
+                <th>Status</th>
+                <th>Clarification</th>
+                <th>Tool Match</th>
+                <th>Latency</th>
+                <th>Failure Diagnostics</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of filteredResults(); track row.scenario_id) {
+                <tr [class.fail-row]="!row.passed">
+                  <td class="font-mono font-bold">{{ row.scenario_id }}</td>
+                  <td><span class="cohort-tag {{ row.cohort }}">{{ row.cohort }}</span></td>
+                  <td>
+                    <span class="status-pill" [class.pass]="row.passed" [class.fail]="!row.passed">
+                      {{ row.passed ? 'PASSED' : 'FAILED' }}
+                    </span>
+                  </td>
+                  <td>{{ row.clarification_matched ? '✓' : '✗' }}</td>
+                  <td>{{ row.tool_matched ? '✓' : '✗' }}</td>
+                  <td>{{ row.duration_ms | number:'1.0-1' }}ms</td>
+                  <td class="diagnostics-cell">
+                    {{ row.failure_reasons.length > 0 ? row.failure_reasons.join(', ') : 'None (Compliant)' }}
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+      </section>
+    }
+
+    <!-- ============================================================== -->
+    <!-- TAB 3: ADSTREAM TELEMETRY EXPLORER                             -->
+    <!-- ============================================================== -->
+    @if (activeTab() === 'telemetry') {
+      <section class="telemetry-view">
+        <div class="telemetry-header">
+          <div>
+            <h2 class="view-title">AdStream FastMCP: In-Process DuckDB Telemetry Lake</h2>
+            <p class="view-subtitle">High-throughput columnar Parquet tables queried via FastMCP tools within strict 800-token budgets</p>
+          </div>
+          <button class="btn btn-secondary" (click)="loadTelemetry()">↻ Refresh Data</button>
+        </div>
+
+        <!-- CTV Apps Table -->
+        <div class="telemetry-card">
+          <h3 class="card-subtitle">📺 Connected TV (CTV) App Registry &amp; Hardware Entropy</h3>
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Bundle ID</th>
+                <th>Platform</th>
+                <th>App Name</th>
+                <th>Screensaver Ratio</th>
+                <th>UA Entropy</th>
+                <th>SSAI Diversity</th>
+                <th>COPPA Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (app of ctvApps(); track app.bundle_id) {
+                <tr>
+                  <td class="font-mono text-cyan-400 font-bold">{{ app.bundle_id }}</td>
+                  <td><span class="platform-tag {{ app.platform }}">{{ app.platform | uppercase }}</span></td>
+                  <td>{{ app.app_name }}</td>
+                  <td [class.text-rose-400]="app.screensaver_playback_ratio > 0.40">
+                    {{ app.screensaver_playback_ratio * 100 | number:'1.1-1' }}%
+                  </td>
+                  <td>{{ app.user_agent_entropy_score | number:'1.2-2' }}</td>
+                  <td>{{ app.ssai_server_ip_diversity }} IPs</td>
+                  <td>
+                    <span class="status-pill" [class.pass]="app.coppa_compliant" [class.fail]="!app.coppa_compliant">
+                      {{ app.coppa_compliant ? 'COMPLIANT' : 'NON-COMPLIANT' }}
+                    </span>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Publisher IVT Table -->
+        <div class="telemetry-card">
+          <h3 class="card-subtitle">🌐 Programmatic Publisher IVT Rates (GIVT vs. SIVT)</h3>
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Publisher ID</th>
+                <th>Domain</th>
+                <th>Total Impressions</th>
+                <th>GIVT Rate</th>
+                <th>SIVT Rate</th>
+                <th>Top Pattern</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (pub of publishers(); track pub.publisher_id) {
+                <tr>
+                  <td class="font-mono font-bold">{{ pub.publisher_id }}</td>
+                  <td>{{ pub.domain }}</td>
+                  <td>{{ pub.total_impressions | number }}</td>
+                  <td>{{ pub.givt_rate * 100 | number:'1.2-2' }}%</td>
+                  <td [class.text-rose-400]="pub.sivt_rate > 0.10" class="font-bold">
+                    {{ pub.sivt_rate * 100 | number:'1.2-2' }}%
+                  </td>
+                  <td><span class="tag-pattern">{{ pub.top_sivt_category }}</span></td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+    }
+
+  </main>
+</div>
